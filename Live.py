@@ -6,8 +6,8 @@ from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
 import os, playsound, time, backtrader as bt, datetime
 
 ### Text To Speach Stuff ###
-Buytest    = "Buy " + COIN_TARGET
-Selltext   = "Sell "+ COIN_TARGET
+Buytest = f"Buy {COIN_TARGET}"
+Selltext = f"Sell {COIN_TARGET}"
 
 def log(msg):
     print(msg)
@@ -17,12 +17,6 @@ def log(msg):
 
 def speak(text):
     return
-    language = 'en'
-    filename ="output.mp3"
-    output = gTTS(text=text, lang = language,slow=True)
-    output.save(filename)
-    playsound.playsound(filename)
-    os.remove(filename)
 
 
 class TD9(bt.Indicator):
@@ -169,34 +163,31 @@ class MyStratLive(bt.Strategy):
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
         dt = datetime.datetime.utcnow() + datetime.timedelta(minutes=180)
-        msg= 'Data Status: {}'.format(data._getstatusname(status))
-        log(str(dt)+" "+str(dn)+" "+str(msg))
-        if data._getstatusname(status) == 'LIVE':
-            self.live_data = True
-        else:
-            self.live_data = False
+        msg = f'Data Status: {data._getstatusname(status)}'
+        log(f"{str(dt)} {str(dn)} {msg}")
+        self.live_data = data._getstatusname(status) == 'LIVE'
 
     def orderer(self, isbuy):
         if(self.ordered):
             return
-            
-        if(isbuy):
+
+        if isbuy:
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
             log("Buy state")
-            if(self.live_data and cash > 11.0):
+            if (self.live_data and cash > 11.0):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
                 speak(Buytest)
-                log("Buyed pos at:"+str(self.data.close[0]))
+                log(f"Buyed pos at:{str(self.data.close[0])}")
         else:
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             log("Sell state")
-            if(self.live_data and (coin * self.data.close[0]) > 11.0):
+            if (self.live_data and (coin * self.data.close[0]) > 11.0):
                 self.order=self.sell(size = coin)
                 self.buyprice = -1
                 speak(Selltext)
-                log("Closed pos at:"+str(self.data.close[0]))
+                log(f"Closed pos at:{str(self.data.close[0])}")
 
     def next(self):
         
@@ -212,26 +203,30 @@ class MyStratLive(bt.Strategy):
         for data in self.datas:
             log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bull_diff_ema[0]))
-            
+
 
         self.ordered = False
-        if(not self.superisBull[0] == 0):
+        if self.superisBull[0] != 0:
             self.isbull = (self.superisBull[0] == 1)
             log("Switched: "+(" Bull" if self.isbull else " Bear")+" at: "+str(self.data.close[0]))
 
 
         #print("pos:"+str(self.position.size))
-        
+
         #if(not self.live_data):
         #    return
 
 
-        if(self.isbull):
+        if self.isbull:
             bull_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
-            bull_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bull_takeprofit/1000)) and not self.buyprice ==-1
+            bull_isTakeProfit = (
+                self.data.close[0]
+                > self.buyprice + (self.buyprice * self.bull_takeprofit / 1000)
+                and self.buyprice != -1
+            )
             bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
             bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
-            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high
             bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
             bull_avgdiffselltrigger = self.data.close[0]  >= self.bull_diff_ema_heigh
             bull_avgdiffbuytrigger  = self.data.close[0]  <= self.bull_diff_ema_low
@@ -252,10 +247,14 @@ class MyStratLive(bt.Strategy):
 
         else:
             bear_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bear_stop_loss/1000))
-            bear_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bear_takeprofit/1000)) and not self.buyprice ==-1
+            bear_isTakeProfit = (
+                self.data.close[0]
+                > self.buyprice + (self.buyprice * self.bear_takeprofit / 1000)
+                and self.buyprice != -1
+            )
             bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high
             bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
-            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high
             bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
             bear_avgdiffselltrigger = self.data.close[0]  >= self.bear_diff_ema_heigh
             bear_avgdiffbuytrigger  = self.data.close[0]  <= self.bear_diff_ema_low
@@ -309,22 +308,23 @@ def main():
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
     hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=15*1000)
-    data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
-        name='%s%s' % (COIN_TARGET, COIN_REFER),
+    data = store.getdata(
+        dataname=f'{COIN_TARGET}/{COIN_REFER}',
+        name=f'{COIN_TARGET}{COIN_REFER}',
         timeframe=bt.TimeFrame.Minutes,
         fromdate=hist_start_date,
         compression=15,
-        ohlcv_limit=15*100000,
-        drop_newest=True
+        ohlcv_limit=15 * 100000,
+        drop_newest=True,
     )
 
     #cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=5)
 
     # Add the feed
     cerebro.adddata(data)
-    
+
     # Include Strategy
-    
+
     args = [9,36,2,91,17,10,1,79,174,268,99,153,14,55,34,7,2,104,218,324,57,216]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
@@ -348,9 +348,9 @@ def wob():
         main()
     except KeyboardInterrupt:
         timer = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)).strftime("%d-%m-%y %H:%M")
-        log("finished : "+ str(timer))
+        log(f"finished : {str(timer)}")
     except Exception as err:
-        log("Finished with error: "+str(err))
+        log(f"Finished with error: {str(err)}")
         raise
 
 if __name__ == "__main__":

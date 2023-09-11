@@ -212,26 +212,25 @@ class MyStratV1(bt.Strategy):
 
         if (self.isBull and not isTrendSame):
             self.orderer(False)
-        
+
         if (not self.isBull and not isTrendSame):
             self.orderer(True)
 
 
         self.isBull = tmp
 
-        if (self.isBull):
+        if self.isBull:
             if self.data > self.diff_ema + (self.diff_ema*10 / self.bullavgselldiffactor):
                 self.orderer(False)
 
             elif self.data < self.diff_ema - (self.diff_ema*10 / self.bullavgbuydiffactor): 
                 self.orderer(True)
 
-        else:
-            if self.data > self.diff_ema + (self.diff_ema*10 / self.bearavgselldiffactor):
-                self.orderer(False)
+        elif self.data > self.diff_ema + (self.diff_ema*10 / self.bearavgselldiffactor):
+            self.orderer(False)
 
-            elif self.data < self.diff_ema - (self.diff_ema*10 / self.bearavgbuydiffactor):
-                self.orderer(True)
+        elif self.data < self.diff_ema - (self.diff_ema*10 / self.bearavgbuydiffactor):
+            self.orderer(True)
 
 
 
@@ -351,47 +350,58 @@ class MyStratV3(bt.Strategy):
 
     def next(self):
         self.ordered = False
-        if(not self.superisBull[0] == 0):
-                self.isbull = (self.superisBull[0] == 1)
+        if self.superisBull[0] != 0:
+            self.isbull = (self.superisBull[0] == 1)
 
-        if(self.isbull):
+        if self.isbull:
             bull_isStop             = (self.data.close[0] <   self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
-            bull_isTakeProfit       = (self.data.close[0] >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000)) and not self.buyprice ==-1
+            bull_isTakeProfit = (
+                self.data.close[0]
+                > self.buyprice + (self.buyprice * self.bull_takeprofit / 1000)
+                and self.buyprice != -1
+            )
             bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
             bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
-            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high
             bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
             bull_avgdiffselltrigger = self.data.close[0]  >=  self.bull_diff_ema_heigh
             bull_avgdiffbuytrigger  = self.data.close[0]  <=  self.bull_diff_ema_low
 
 
-            if((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
+            if ((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
                 self.orderer(True)
-            elif((bull_td9selltrigger  and bull_rsiselltrigger and bull_avgdiffselltrigger)):
+            elif (
+                bull_td9selltrigger
+                and bull_rsiselltrigger
+                and bull_avgdiffselltrigger
+                or bull_isStop
+                or bull_isTakeProfit
+            ):
                 self.orderer(False)
-            elif(bull_isStop):
-                self.orderer(False)
-            elif(bull_isTakeProfit):
-                self.orderer(False)
-
         else:
             bear_isStop             = (self.data.close[0] <   self.buyprice - (self.buyprice * self.bear_stop_loss/1000))
-            bear_isTakeProfit       = (self.data.close[0] >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000)) and not self.buyprice ==-1
+            bear_isTakeProfit = (
+                self.data.close[0]
+                > self.buyprice + (self.buyprice * self.bear_takeprofit / 1000)
+                and self.buyprice != -1
+            )
             bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high
             bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
-            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high
             bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
             bear_avgdiffselltrigger = self.data.close[0]  >=  self.bear_diff_ema_heigh
             bear_avgdiffbuytrigger  = self.data.close[0]  <=  self.bear_diff_ema_low
 
 
-            if((bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger )):
+            if ((bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger )):
                 self.orderer(True)
-            elif((bear_td9selltrigger  and bear_rsiselltrigger and bear_avgdiffselltrigger)):
-                self.orderer(False)
-            elif(bear_isStop):
-                self.orderer(False)
-            elif(bear_isTakeProfit):
+            elif (
+                bear_td9selltrigger
+                and bear_rsiselltrigger
+                and bear_avgdiffselltrigger
+                or bear_isStop
+                or bear_isTakeProfit
+            ):
                 self.orderer(False)
 
         
